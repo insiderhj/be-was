@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+
+import constant.HttpStatus;
 import org.slf4j.Logger;
 
 public class HttpResponse {
@@ -29,11 +31,11 @@ public class HttpResponse {
     }
 
     public Map<String, String> getHeader() {
-        return header;
+        return this.header;
     }
 
     public byte[] getBody() {
-        return body;
+        return this.body;
     }
 
     public static class HttpResponseBuilder {
@@ -74,6 +76,8 @@ public class HttpResponse {
     }
 
     public void send(OutputStream out, Logger logger) {
+        if (this.status == null)
+            throw new IllegalStateException("Status is required for HttpResponse.");
         try {
             DataOutputStream dos = new DataOutputStream(out);
             dos.writeBytes("HTTP/1.1 " + this.status.getFullMessage() + " \r\n");
