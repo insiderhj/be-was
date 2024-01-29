@@ -7,7 +7,8 @@ public enum ParamType {
     INTEGER(Integer.class, Integer::valueOf),
     LONG(Long.class, Long::valueOf),
     DOUBLE(Double.class, Double::valueOf),
-    BOOLEAN(Boolean.class, Boolean::valueOf);
+    BOOLEAN(Boolean.class, Boolean::valueOf),
+    ;
 
     private final Class<?> clazz;
     private final Function<String, ?> mappingFunction;

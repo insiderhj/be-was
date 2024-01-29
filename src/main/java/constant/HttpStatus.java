@@ -2,11 +2,12 @@ package constant;
 
 public enum HttpStatus {
     OK("200", "OK"),
-    CREATED("201", "CREATED"),
+    CREATED("201", "Created"),
 
     FOUND("302", "Found"),
 
     BAD_REQUEST("400", "Bad Request"),
+    FORBIDDEN("403", "Forbidden"),
     NOT_FOUND("404", "Not Found"),
     CONFLICT("409", "Conflict"),
 
@@ -21,15 +22,15 @@ public enum HttpStatus {
     }
 
     public String getCode() {
-        return code;
+        return this.code;
     }
 
     public String getMessage() {
-        return message;
+        return this.message;
     }
 
     public String getFullMessage() {
-        return code + " " + message;
+        return this.code + " " + this.message;
     }
 
     public static HttpStatus getByCode(String code) {

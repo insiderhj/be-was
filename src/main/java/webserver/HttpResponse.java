@@ -1,25 +1,31 @@
 package webserver;
 
+import constant.HttpHeader;
+import constant.HttpStatus;
+import constant.MimeType;
+import org.slf4j.Logger;
+import util.web.ResourceLoader;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import constant.HttpStatus;
-import org.slf4j.Logger;
-
 public class HttpResponse {
 
     private HttpStatus status;
-
-    private final Map<String, String> header;
-
+    private final Map<HttpHeader, String> header;
     private byte[] body;
 
     public HttpResponse() {
         this.status = HttpStatus.OK;
         this.header = new HashMap<>();
+    }
+
+    public void setBody(String body) {
+        this.body = body.getBytes();
+        this.header.put(HttpHeader.CONTENT_LENGTH, "" + this.body.length);
     }
 
     public static HttpResponseBuilder builder() {
@@ -30,7 +36,7 @@ public class HttpResponse {
         return this.status;
     }
 
-    public Map<String, String> getHeader() {
+    public Map<HttpHeader, String> getHeader() {
         return this.header;
     }
 
@@ -50,20 +56,20 @@ public class HttpResponse {
             return this;
         }
 
-        public HttpResponseBuilder addHeader(String key, String value) {
-            this.httpResponse.header.put(key, value);
+        public HttpResponseBuilder addHeader(HttpHeader header, String value) {
+            this.httpResponse.header.put(header, value);
             return this;
         }
 
         public HttpResponseBuilder body(String body) {
             this.httpResponse.body = body.getBytes();
-            addHeader("Content-Length", Integer.toString(this.httpResponse.body.length));
+            addHeader(HttpHeader.CONTENT_LENGTH, "" + this.httpResponse.body.length);
             return this;
         }
 
         public HttpResponseBuilder body(byte[] body) {
             this.httpResponse.body = body;
-            addHeader("Content-Length", Integer.toString(body.length));
+            addHeader(HttpHeader.CONTENT_LENGTH, "" + body.length);
             return this;
         }
 
@@ -75,18 +81,27 @@ public class HttpResponse {
         }
     }
 
+    public static HttpResponse redirect(String path) {
+        return builder().status(HttpStatus.FOUND)
+                .addHeader(HttpHeader.LOCATION, path)
+                .build();
+    }
+
+    public static HttpResponse of(HttpStatus status) {
+        return redirect("/error/" + status.getCode() + ".html");
+    }
+
     public void send(OutputStream out, Logger logger) {
         if (this.status == null)
             throw new IllegalStateException("Status is required for HttpResponse.");
         try {
-            DataOutputStream dos = new DataOutputStream(out);
-            dos.writeBytes("HTTP/1.1 " + this.status.getFullMessage() + " \r\n");
-            for (Map.Entry<String, String> entry : header.entrySet()) {
-                dos.writeBytes(entry.getKey() + ": " + entry.getValue() + "\r\n");
+            out.write(("HTTP/1.1 " + this.status.getFullMessage() + " \r\n").getBytes());
+            for (Map.Entry<HttpHeader, String> entry : header.entrySet()) {
+                out.write((entry.getKey().getValue() + ": " + entry.getValue() + "\r\n").getBytes());
             }
-            dos.writeBytes("\r\n");
-            dos.write(body, 0, body.length);
-            dos.flush();
+            out.write("\r\n".getBytes());
+            out.write(this.body);
+            out.flush();
         } catch (IOException e) {
             logger.error(e.getMessage());
         }

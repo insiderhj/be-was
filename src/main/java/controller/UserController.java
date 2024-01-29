@@ -1,34 +1,57 @@
 package controller;
 
 import annotation.Controller;
+import annotation.RequestBody;
 import annotation.RequestMapping;
-import annotation.RequestParam;
-import db.Database;
-import model.User;
-import webserver.HttpResponse;
+import constant.HttpHeader;
 import constant.HttpStatus;
+import database.UserRepository;
+import dto.LoginDto;
+import dto.UserCreateDto;
+import model.User;
+import util.session.SessionManager;
+import util.web.RequestParser;
+import webserver.HttpRequest;
+import webserver.HttpResponse;
+
+import java.util.Map;
+import java.util.Objects;
 
 @Controller
 public class UserController {
 
-    @RequestMapping(method = "GET", path = "/user/create")
-    public static HttpResponse createUser(@RequestParam(value = "userId", required = true) String userId,
-                                          @RequestParam(value = "password", required = true) String password,
-                                          @RequestParam("name") String name,
-                                          @RequestParam("email") String email) {
+    @RequestMapping(method = "POST", path = "/user/create")
+    public static HttpResponse createUser(@RequestBody UserCreateDto user) {
+        User existUser = UserRepository.findByUserId(user.getUserId());
 
-        User user = new User(userId, password, name, email);
-        User existUser = Database.findUserById(userId);
         if (existUser != null)
-            return HttpResponse.builder()
-                    .status(HttpStatus.CONFLICT)
-                    .body("The requested username is already in use.")
-                    .build();
+            return HttpResponse.of(HttpStatus.CONFLICT);
 
-        Database.addUser(user);
+        UserRepository.add(new User(user.getUserId(), user.getPassword(), user.getName(), user.getEmail()));
+        return HttpResponse.redirect("/index.html");
+    }
+
+    @RequestMapping(method = "POST", path = "/user/login")
+    public static HttpResponse login(@RequestBody LoginDto loginInfo) {
+        User existUser = UserRepository.findByUserId(loginInfo.getUserId());
+        if (existUser == null || !Objects.equals(existUser.getPassword(), loginInfo.getPassword()))
+            return HttpResponse.redirect("/user/login_failed.html");
+
+        String sessionId = SessionManager.generateSessionId();
+        SessionManager.addSession(sessionId, existUser);
+
         return HttpResponse.builder()
                 .status(HttpStatus.FOUND)
-                .addHeader("Location", "/index.html")
+                .addHeader(HttpHeader.SET_COOKIE, "SID=" + sessionId + "; Path=/;")
+                .addHeader(HttpHeader.LOCATION, "/index.html")
                 .build();
+    }
+
+    @RequestMapping(method = "GET", path = "/user/logout")
+    public static HttpResponse logout(HttpRequest request) {
+        Map<String, String> cookies = RequestParser.parseCookie(request.getHeader().get(HttpHeader.COOKIE));
+        String sessionId = cookies.get("SID");
+        SessionManager.removeSession(sessionId);
+        return HttpResponse.redirect("/index.html");
     }
 }
